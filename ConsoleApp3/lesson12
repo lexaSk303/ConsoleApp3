@@ -1,0 +1,122 @@
+using System;
+using System.Data;
+
+public class Program
+{
+    public static void Main()
+    {
+        DataSet ds = new DataSet();
+
+        DataTable groups = new DataTable("Groups");
+        groups.Columns.Add("Id", typeof(int));
+        groups.Columns.Add("Name", typeof(string));
+        groups.PrimaryKey = new[] 
+        { 
+            groups.Columns["Id"]! 
+        };
+
+        DataTable students = new DataTable("Students");
+        students.Columns.Add("Id", typeof(int));
+        students.Columns.Add("Name", typeof(string));
+        students.Columns.Add("Age", typeof(int));
+        students.Columns.Add("GroupId", typeof(int));
+        students.PrimaryKey = new[] 
+        { 
+            students.Columns["Id"]! 
+        };
+
+        ds.Tables.Add(groups);
+        ds.Tables.Add(students);
+        ds.Relations.Add("GroupStudents", groups.Columns["Id"]!, students.Columns["GroupId"]!);
+
+        groups.Rows.Add(1, "АлК-23");
+        groups.Rows.Add(2, "МКТ-43");
+        groups.Rows.Add(3, "ТлК-11");
+
+        students.Rows.Add(1, "Григрун Алексей", 18, 1);
+        students.Rows.Add(2, "Петрова Наташа", 20, 1);
+        students.Rows.Add(3, "Макалян Алексей", 18, 2);
+        students.Rows.Add(4, "Улькина Ольга", 28, 2);
+        students.Rows.Add(5, "Кузнецов Даниил", 19, 3);
+        students.Rows.Add(6, "Петренко Анастасия", 19, 1);
+        students.Rows.Add(7, "Алехадро Иван", 21, 2);
+        students.Rows.Add(8, "Поровозова Анна", 20, 3);
+        students.Rows.Add(9, "Калашников Алексей", 19, 1);
+        students.Rows.Add(10, "Трипитропа Елена", 22, 2);
+
+        foreach (DataRow row in students.Rows)
+        {
+            Console.WriteLine(
+                $"#{row["Id"],-10} | " +
+                $"{row["Name"],-20} | " +
+                $"{row["Age"],-3} лет | " +
+                $"{row["GroupId"],-3} | " +
+                $"Группа: {row.GetParentRow("GroupStudents")["Name"]}"
+            );
+        }
+
+        DataRow oldest = null;
+        int maxAge = 0;
+        foreach (DataRow row in students.Rows)
+        {
+            int currentAge = (int)row["Age"];
+            if (currentAge > maxAge)
+            {
+                maxAge = currentAge;
+                oldest = row;
+            }
+        }
+        Console.WriteLine($"\nСамый старший: {oldest["Name"]} ({oldest["Age"]} лет)");
+
+        DataRow[] foundRows = students.Select("Id = 3");
+        if (foundRows.Length > 0)
+            foundRows[0]["Age"] = 65;
+        students.Rows.Add(11, "Петренко Петр", 19, 1);
+
+        DataRow[] rowsToDelete = students.Select("Id = 2");
+        if (rowsToDelete.Length > 0)
+            students.Rows.Remove(rowsToDelete[0]);
+
+        foreach (DataRow row in students.Rows)
+        {
+            Console.WriteLine(
+                $"#{row["Id"],-10} | " +
+                $"{row["Name"],-20} | " +
+                $"{row["Age"],-3} лет | " +
+                $"{row["GroupId"],-3} | " +
+                $"Группа: {row.GetParentRow("GroupStudents")["Name"]}"
+            );
+        }
+
+        Console.WriteLine("1. Попытка добавить группу с одинаковым Id...");
+        bool pt = false;
+        foreach (DataRow g in groups.Rows)
+        {
+            if ((int)g["Id"] == 1)
+            {
+                pt = true;
+                break;
+            }
+        }
+        if (pt)
+            Console.WriteLine("   Ошибка: группа с Id=1 уже существует");
+
+        Console.WriteLine("2. Запрет пустых названий групп...");
+        if (groups.Columns["Name"].AllowDBNull == false)
+            Console.WriteLine("   Пустые названия запрещены ");
+
+        Console.WriteLine("3. Студенты без подходящей группы...");
+        bool fo = false;
+        foreach (DataRow s in students.Rows)
+        {
+            int groupId = (int)s["GroupId"];
+            if (groups.Rows.Find(groupId) == null)
+            {
+                Console.WriteLine($"   #{s["Id"],-3} | {s["Name"],-20} | GroupId: {groupId} (группа не найдена)");
+                fo = true;
+            }
+        }
+        if (!fo)
+            Console.WriteLine("   Все студенты имеют подходящую группу");
+    }
+}
